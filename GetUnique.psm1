@@ -14,20 +14,19 @@ function GetUnique {
   )
 
   $Directory = $Path
-  $FileToProcess = Get-ChildItem -Path $Directory -Recurse
+  $FileToProcess = Get-ChildItem -Path $Directory -Recurse -File
 
-  ForEach-Object -Parallel -InputObject $FileToProcess -Process {
+  ForEach-Object -InputObject $FileToProcess -Process {
     $Lines = Get-Content $_.FullName
     [string[]]$Words = $Lines.Split()
     $UniqueWords = [System.Collections.Generic.HashSet[string]]::new($Words)
 
-    if (-not (Test-Path $FinalFile)) {
-      Set-Content -Value $UniqueWords -Path $FinalFile -Encoding ascii
-    } else {
-      Add-Content -Value $UniqueWords -Path $FinalFile -Encoding ascii
-    }
-
   }
+
+  if (-not (Test-Path $FinalFile)) {
+    New-Item -Path $FinalFile -Force
+  }
+  $UniqueWords.ForEach{ Add-Content -Value $_ -Path $FinalFile -Encoding ascii }
 
 }
 
