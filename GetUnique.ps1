@@ -1,3 +1,5 @@
+
+Import-Module -Name .\GetUnique.psm1 -Global
 function GetUnique {
   [CmdletBinding()]
   param(
@@ -15,17 +17,23 @@ function GetUnique {
   $FileToProcess = Get-ChildItem -Path $Directory -Recurse -File
 
   ForEach-Object -InputObject $FileToProcess -Process {
-    $Lines = Get-Content $_.FullName
+    $Lines = Get-Content $_.FullName -Encoding ascii -ReadCount 0
     [string[]]$Words = $Lines.Split()
-    $UniqueWords = [System.Collections.Generic.HashSet[string]]::new($Words)
+    $UniqueWordList = [System.Collections.Generic.HashSet[string]]::new([string[]]($Words), [System.StringComparer]::OrdinalIgnoreCase)
 
   }
 
-  if (-not (Test-Path $FinalFile)) {
-    New-Item -Path $FinalFile -Force
-  }
-  $UniqueWords.ForEach{ Add-Content -Value $_ -Path $FinalFile -Encoding ascii }
+# Regex for all characters on us keyboard including special characters
+
+$uniqueWordList | Out-File $FinalFile -Encoding ascii -Force -Append -Verbose
 
 }
+#   if (-not (Test-Path $FinalFile)) {
+#     New-Item -Path $FinalFile -Force
+#   }
 
-GetUnique -Path "C:\Users\micha\case2" -FinalFile C:\Users\micha\OneDrive\Desktop\actual.txt
+#   $UniqueWords.GetEnumerator() | ForEach-Object {"{0}" -f $_.Name} | Add-Content -Path $FinalFile -Encoding UTF8
+
+# }
+
+GetUnique -Path $ENV:USERPROFILE\Desktop\vc -FinalFile $ENV:USERPROFILE\Desktop\wordlist.txt -Verbose
