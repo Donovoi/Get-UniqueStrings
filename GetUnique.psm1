@@ -33,32 +33,32 @@
 
 function Convert-HashToString
 {
-    param
-    (
-        [Parameter(Mandatory = $true)]
-        [System.Collections.Hashtable]
-        $Hash
-    )
-    $hashstr = "@{"
-    $keys = $Hash.keys
-    foreach ($key in $keys)
+  param
+  (
+    [Parameter(Mandatory = $true)]
+    [System.Collections.Hashtable]
+    $Hash
+  )
+  $hashstr = "@{"
+  $keys = $Hash.keys
+  foreach ($key in $keys)
+  {
+    $v = $Hash[$key]
+    if ($key -match "\s")
     {
-        $v = $Hash[$key]
-        if ($key -match "\s")
-        {
-            $hashstr += "`"$key`"" + "=" + "`"$v`"" + ";"
-        }
-        else
-        {
-            $hashstr += $key + "=" + "`"$v`"" + ";"
-        }
+      $hashstr += "`"$key`"" + "=" + "`"$v`"" + ";"
     }
-    $hashstr += "}"
-    return $hashstr
+    else
+    {
+      $hashstr += $key + "=" + "`"$v`"" + ";"
+    }
+  }
+  $hashstr += "}"
+  return $hashstr
 }
 
 function Remove-StringSpecialCharacter {
-  <#
+<#
 .SYNOPSIS
   This function will remove the special character from a string.
 
@@ -98,45 +98,126 @@ function Remove-StringSpecialCharacter {
   [CmdletBinding()]
   param
   (
-      [Parameter(ValueFromPipeline)]
-      [ValidateNotNullOrEmpty()]
-      [Alias('Text')]
-      [System.String[]]$String,
+    [Parameter(ValueFromPipeline)]
+    [ValidateNotNullOrEmpty()]
+    [Alias('Text')]
+    [System.String[]]$String,
 
-      [Alias("Keep")]
-      #[ValidateNotNullOrEmpty()]
-      [String[]]$SpecialCharacterToKeep
+    [Alias("Keep")]
+    #[ValidateNotNullOrEmpty()]
+    [String[]]$SpecialCharacterToKeep
   )
-  PROCESS {
-      try {
-          IF ($PSBoundParameters["SpecialCharacterToKeep"]) {
-              $Regex = "[^\p{L}\p{Nd}"
-              Foreach ($Character in $SpecialCharacterToKeep) {
-                  IF ($Character -eq "-") {
-                      $Regex += "-"
-                  }
-                  else {
-                      $Regex += [Regex]::Escape($Character)
-                  }
-                  #$Regex += "/$character"
-              }
-
-              $Regex += "]+"
-          } #IF($PSBoundParameters["SpecialCharacterToKeep"])
-          ELSE { $Regex = "[^\p{L}\p{Nd}]+" }
-
-          FOREACH ($Str in $string) {
-              Write-Verbose -Message "Original String: $Str"
-              $Str -replace $regex, ""
+  process {
+    try {
+      if ($PSBoundParameters["SpecialCharacterToKeep"]) {
+        $Regex = "[^\p{L}\p{Nd}"
+        foreach ($Character in $SpecialCharacterToKeep) {
+          if ($Character -eq "-") {
+            $Regex += "-"
           }
+          else {
+            $Regex += [regex]::Escape($Character)
+          }
+          #$Regex += "/$character"
+        }
+
+        $Regex += "]+"
+      } #IF($PSBoundParameters["SpecialCharacterToKeep"])
+      else { $Regex = "[^\p{L}\p{Nd}]+" }
+
+      foreach ($Str in $string) {
+        Write-Verbose -Message "Original String: $Str"
+        $Str -replace $regex,""
       }
-      catch {
-          $PSCmdlet.ThrowTerminatingError($_)
-      }
+    }
+    catch {
+      $PSCmdlet.ThrowTerminatingError($_)
+    }
   } #PROCESS
 }
+
+
+function GetStrings
+{
+
+  param
+  (
+    [Parameter(Position = 1,Mandatory = $True,ValueFromPipelineByPropertyName = $True)]
+    [ValidateNotNullOrEmpty()]
+    [ValidateScript({ Test-Path $_ -PathType 'Leaf' })]
+    [String[]]
+    [Alias('PSPath')]
+    $Path,
+
+    [ValidateSet('Default','Ascii','Unicode')]
+    [string]
+    $Encoding = 'Default',
+
+    [uint32]
+    $MinimumLength = 3
+  )
+
+  begin
+  {
+    $FileContents = ''
+  }
+  process
+  {
+    foreach ($File in $Path)
+    {
+      # if ($Encoding -eq 'Unicode' -or $Encoding -eq 'Default')
+      # {
+      #   $UnicodeFileContents = Get-Content -Encoding 'Unicode' $File -ReadCount 0 -Raw
+      #   $UnicodeRegex = [regex]"[\u0020-\u007E]{$MinimumLength,}"
+      #   $Results += $UnicodeRegex.Matches($UnicodeFileContents)
+      # }
+
+      if ($Encoding -eq 'Ascii' -or $Encoding -eq 'Default')
+      {
+        $AsciiFileContents = GetContentFast -readOnly -Path $_.FullName
+        $AsciiRegex = [regex]"[\x20-\x7E]{$MinimumLength,}"
+        $Results = $AsciiRegex.Matches($AsciiFileContents)
+      }
+
+      $Results | ForEach-Object -Parallel { Write-Output $_.Value }
+    }
+  }
+  end {}
+}
+
+function GetContentFast {
+  param(
+    [Parameter(Position = 1,Mandatory = $True,ValueFromPipelineByPropertyName = $True)]
+    [ValidateNotNullOrEmpty()]
+    [ValidateScript({ Test-Path $_ -PathType 'Leaf' })]
+    [String[]]
+    [Alias('PSPath')]
+    $Path,
+    [switch]$readOnly
+  )
+
+$FileToRead = Get-Item -Path $Path
+
+  Write-Verbose "Reading $FileToRead..."
+  $fs = [IO.File]::Open($FileToRead,[IO.FileMode]::Open,
+    [IO.FileAccess]::Read,[IO.FileShare]::ReadWrite)
+  #"`$readOnly is $readOnly"
+  if ($readOnly) {
+    $File = New-Object -TypeName System.IO.StreamReader -ArgumentList $fs
+  } else {
+    $File = New-Object -TypeName System.IO.StreamReader -ArgumentList $FileToRead
+  }
+  $LineCount = 0
+  while ( $read = $File.ReadLine() ) {
+    $Linecount++
+}
+  Out-Host -InputObject $read
+  $File.Close()
+}
+GetContentFast -Path "C:\Users\micha\Desktop\test\vcredist2015_2017_2019_2022_x64.exe" -readOnly -Verbose
 
 # Export only the functions using PowerShell standard verb-noun naming.
 # Be sure to list each exported functions in the FunctionsToExport field of the module manifest file.
 # This improves performance of command discovery in PowerShell.
 Export-ModuleMember -Function *-*
+Export-ModuleMember -Function GetStrings
