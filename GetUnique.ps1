@@ -16,24 +16,21 @@ function GetUnique {
   $Directory = $Path
   $FileToProcess = Get-ChildItem -Path $Directory -Recurse -File
 
-  ForEach-Object -InputObject $FileToProcess -Process {
-    $Lines = Get-Content $_.FullName -Encoding ascii -ReadCount 0
+  $FunctionDef = $function:GetStrings.ToString()
+  ForEach-Object -InputObject $FileToProcess -Parallel {
+    $function:GetStrings = $using:FunctionDef
+    $Lines = GetStrings -Path $_.FullName -MinimumLength 3 -Encoding Ascii
     [string[]]$Words = $Lines.Split()
-    $UniqueWordList = [System.Collections.Generic.HashSet[string]]::new([string[]]($Words), [System.StringComparer]::OrdinalIgnoreCase)
-
+    $UniqueWordList = [System.Collections.Generic.HashSet[string]]::new([string[]]($Words),[System.StringComparer]::OrdinalIgnoreCase)
   }
 
-# Regex for all characters on us keyboard including special characters
+  [string]$hashString = ($UniqueWordList | Out-String).Trim()
 
-$uniqueWordList | Out-File $FinalFile -Encoding ascii -Force -Append -Verbose
+  $hashString | Out-File -FilePath $FinalFile -Encoding Ascii
+
+
 
 }
-#   if (-not (Test-Path $FinalFile)) {
-#     New-Item -Path $FinalFile -Force
-#   }
 
-#   $UniqueWords.GetEnumerator() | ForEach-Object {"{0}" -f $_.Name} | Add-Content -Path $FinalFile -Encoding UTF8
 
-# }
-
-GetUnique -Path $ENV:USERPROFILE\Desktop\vc -FinalFile $ENV:USERPROFILE\Desktop\wordlist.txt -Verbose
+GetUnique -Path $ENV:USERPROFILE\Desktop\test -FinalFile $ENV:USERPROFILE\Desktop\wordlist.txt -Verbose
