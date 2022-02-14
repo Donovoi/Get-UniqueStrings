@@ -7,6 +7,10 @@ function GetUnique {
     [Parameter(Mandatory = $false)]
     [string]
     $Path = $(Get-Location).Path,
+    # Minimum length of strings to work with
+    [Parameter(Mandatory = $false)]
+    [int16]
+    $MinLength = 5,
     # Destination File
     [Parameter(Mandatory = $false)]
     [string]
@@ -14,23 +18,29 @@ function GetUnique {
   )
 
   $Directory = $Path
-  $FileToProcess = Get-ChildItem -Path $Directory -Recurse -File
+  if (-Not ([string]::IsNullOrWhiteSpace($Directory))) {
+    Import-Content -Path $Directory | ForEach-Object -Process {
+      if (-not ([string]::IsNullOrWhiteSpace($_))) {
+        $Lines = GetStrings -Path $_ -MinimumLength $MinLength
+        [string[]]$Words = if (-not ([string]::IsNullOrWhiteSpace($Lines))) {
+          $Lines.Split()
+        }
+        if (-Not ([string]::IsNullOrWhiteSpace($Words))) {
+          $UniqueWordList = [System.Collections.Generic.HashSet[string]]::new([string[]]($Words),[System.StringComparer]::OrdinalIgnoreCase)
+        }
 
-  $FunctionDef = $function:GetStrings.ToString()
-  ForEach-Object -InputObject $FileToProcess -Parallel {
-    $function:GetStrings = $using:FunctionDef
-    $Lines = GetStrings -Path $_.FullName -MinimumLength 3 -Encoding Ascii
-    [string[]]$Words = $Lines.Split()
-    $UniqueWordList = [System.Collections.Generic.HashSet[string]]::new([string[]]($Words),[System.StringComparer]::OrdinalIgnoreCase)
+      }
+
+
+    }
+    [string]$hashString = ($UniqueWordList | Out-String).Trim()
+
+    $hashString | Out-File -FilePath $FinalFile -Encoding Ascii -Force
   }
-
-  [string]$hashString = ($UniqueWordList | Out-String).Trim()
-
-  $hashString | Out-File -FilePath $FinalFile -Encoding Ascii
-
+ Write-Output "Done"
 
 
 }
 
 
-GetUnique -Path $ENV:USERPROFILE\Desktop\test -FinalFile $ENV:USERPROFILE\Desktop\wordlist.txt -Verbose
+GetUnique -Path "C:\Users\micha\OneDrive\Desktop\SuperMem" -FinalFile $ENV:USERPROFILE\wordsyo.txt -Verbose
