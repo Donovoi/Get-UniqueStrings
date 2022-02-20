@@ -1,4 +1,4 @@
-
+$ErrorActionPreference = 'silentlycontinue';
 Import-Module -Name .\GetUnique.psm1 -Global
 function GetUnique {
   [CmdletBinding()]
@@ -14,33 +14,31 @@ function GetUnique {
     # Destination File
     [Parameter(Mandatory = $false)]
     [string]
-    $FinalFile = $(Get-Location).Path + "../Unique.txt"
+    $FinalFile = $(Get-Location).Path + '../Unique.txt'
   )
 
   $Directory = $Path
   if (-Not ([string]::IsNullOrWhiteSpace($Directory))) {
-    Import-Content -Path $Directory | ForEach-Object -Process {
-      if (-not ([string]::IsNullOrWhiteSpace($_))) {
-        $Lines = GetStrings -Path $_ -MinimumLength $MinLength
-        [string[]]$Words = if (-not ([string]::IsNullOrWhiteSpace($Lines))) {
-          $Lines.Split()
-        }
-        if (-Not ([string]::IsNullOrWhiteSpace($Words))) {
-          $UniqueWordList = [System.Collections.Generic.HashSet[string]]::new([string[]]($Words),[System.StringComparer]::OrdinalIgnoreCase)
-        }
-
+    [string[]]$Content = Import-Content -Path $Directory
+    [string[]]$StringsOnly = $Content | GetStrings -MinimumLength $MinLength
+    if (-not ([string]::IsNullOrWhiteSpace($StringsOnly))) {
+      [string[]]$Words = if (-not ([string]::IsNullOrWhiteSpace($StringsOnly))) {
+        $StringsOnly.Split()
       }
-
+      if (-Not ([string]::IsNullOrWhiteSpace($Words))) {
+        $UniqueWordList = [System.Collections.Generic.HashSet[string]]::new([string[]]($Words), [System.StringComparer]::OrdinalIgnoreCase)
+      }
 
     }
     [string]$hashString = ($UniqueWordList | Out-String).Trim()
 
     $hashString | Out-File -FilePath $FinalFile -Encoding Ascii -Force
   }
- Write-Output "Done"
+  Write-Output 'Done'
 
 
 }
 
 
-GetUnique -Path "C:\Users\micha\OneDrive\Desktop\SuperMem" -FinalFile $ENV:USERPROFILE\wordsyo.txt -Verbose
+GetUnique -Path 'J:\MAS_1.5\All-In-One-Version' -FinalFile $ENV:USERPROFILE\MAS.txt -Verbose
+Start-Process Notepad++.exe -ArgumentList $("$ENV:USERPROFILE\MAS.txt")

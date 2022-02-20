@@ -1,11 +1,10 @@
 # Implement your module commands in this script.
 
-function GetStrings
-{
+function GetStrings {
   [CmdletBinding()]
   param
   (
-    [Parameter(Position = 1,Mandatory = $True,ValueFromPipeline = $True)]
+    [Parameter(Position = 1, Mandatory = $True, ValueFromPipeline = $True)]
     [String[]]
     $Path,
 
@@ -13,19 +12,18 @@ function GetStrings
     $MinimumLength = 5
   )
 
-  process
-  {
+  process {
     $AsciiFileContents = Out-String -InputObject $Path
     $AsciiRegex = [regex]"[\x20-\x7E]{$MinimumLength,}"
     $Results = $AsciiRegex.Matches($AsciiFileContents)
 
-    $Results | ForEach-Object { Write-Output $_.Value -NoEnumerate }
+    $Results | Write-Output -Verbose
   }
 }
 
 
-function Import-Content
-{
+
+function Import-Content {
   [CmdletBinding()]
   param(
     [Parameter(
@@ -39,20 +37,14 @@ function Import-Content
     [switch]
     $Raw
   )
-  process
-  {
+  process {
     $Files = Get-ChildItem -LiteralPath $Path -Recurse -Force -File
-    foreach ($file in (Resolve-Path -LiteralPath $Files))
-    {
-      if (Test-Path -LiteralPath $file -PathType Leaf)
-      {
-        if ($Raw)
-        {
+    foreach ($file in (Resolve-Path -LiteralPath $Files)) {
+      if (Test-Path -LiteralPath $file -PathType Leaf) {
+        if ($Raw) {
           [System.IO.File]::ReadAllText($file) | Write-Output -NoEnumerate
 
-        }
-        else
-        {
+        } else {
           [System.IO.File]::ReadAllLines($file) | Write-Output -NoEnumerate
 
         }
