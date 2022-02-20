@@ -13,11 +13,11 @@ function GetStrings {
   )
 
   process {
-    $AsciiFileContents = Out-String -InputObject $Path
+    [string]$AsciiFileContents = $Path
     $AsciiRegex = [regex]"[\x20-\x7E]{$MinimumLength,}"
     $Results = $AsciiRegex.Matches($AsciiFileContents)
 
-    $Results | Write-Output -Verbose
+    $Results
   }
 }
 

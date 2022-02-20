@@ -40,5 +40,5 @@ function GetUnique {
 }
 
 
-GetUnique -Path 'J:\MAS_1.5\All-In-One-Version' -FinalFile $ENV:USERPROFILE\MAS.txt -Verbose
-Start-Process Notepad++.exe -ArgumentList $("$ENV:USERPROFILE\MAS.txt")
+Measure-Command -Expression { GetUnique -Path $ENV:USERPROFILE\case2 -FinalFile $ENV:USERPROFILE\case.txt -Verbose } -Verbose
+Start-Process Notepad++.exe -ArgumentList $("$ENV:USERPROFILE\case.txt")
