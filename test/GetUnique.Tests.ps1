@@ -1,4 +1,4 @@
-$ModuleManifestName = 'GetUnique.psd1'
+$ModuleManifestName = 'Get-UniqueStrings.psd1'
 $ModuleManifestPath = "$PSScriptRoot\..\$ModuleManifestName"
 
 Describe 'Module Manifest Tests' {
