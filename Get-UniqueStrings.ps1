@@ -1,6 +1,6 @@
 $ErrorActionPreference = 'silentlycontinue';
-Import-Module -Name .\GetUnique.psm1 -Global
-function GetUnique {
+Import-Module -Name .\Get-UniqueStrings.psm1 -Global
+function Get-UniqueStrings {
   [CmdletBinding()]
   param(
     # Directory to process
@@ -40,5 +40,5 @@ function GetUnique {
 }
 
 
-Measure-Command -Expression { GetUnique -Path $ENV:USERPROFILE\case2 -FinalFile $ENV:USERPROFILE\case.txt -Verbose } -Verbose
+Measure-Command -Expression { Get-UniqueStrings -Path $ENV:USERPROFILE\case2 -FinalFile $ENV:USERPROFILE\case.txt -Verbose } -Verbose
 Start-Process Notepad++.exe -ArgumentList $("$ENV:USERPROFILE\case.txt")
