@@ -1,4 +1,7 @@
 # Implement your module commands in this script.
+using namespace System
+using namespace System.IO
+using namespace System.Text
 
 function GetStrings {
   [CmdletBinding()]
@@ -14,9 +17,12 @@ function GetStrings {
 
   process {
     [string]$AsciiFileContents = $Path
-    $AsciiRegex = [regex]"[\x20-\x7E]{$MinimumLength,}"
+    #$AsciiRegex = [regex]"[\x20-\x7E]{$MinimumLength,}"
+    # Only match valid UTF8 characters
+    $AsciiRegex = [regex]"[\x00-\x7F]{$MinimumLength,}"
     $Results = $AsciiRegex.Matches($AsciiFileContents)
-
+    # Remove all question marks from a line that has two or more consecutive question marks
+    $Results = $Results | ForEach-Object { $_.Value -replace '\?{2,}', '' }
     $Results
   }
 }
@@ -44,11 +50,17 @@ function Import-Content {
     $FinalFilePath
   )
   process {
-    $Files = Get-ChildItem -LiteralPath $Path -Recurse -Force -File
+    $Files = Get-ChildItem -LiteralPath $Path -Recurse -Force -File -ErrorAction SilentlyContinue
     foreach ($file in (Resolve-Path -LiteralPath $Files)) {
       if (Test-Path -LiteralPath $file -PathType Leaf) {
-        # fastest way to read a file (including a binary file) into memory
-        [string[]]$Content = [System.IO.File]::ReadAllBytes($file) | ForEach-Object { [char]$_ }
+        $binaryReader = New-Object System.IO.BinaryReader([System.IO.File]::Open($file, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::Read))
+        $binaryReader.BaseStream.Position = 0
+        $binaryReader.BaseStream.Seek(0, [System.IO.SeekOrigin]::Begin)
+        $bytes = $binaryReader.ReadBytes($binaryReader.BaseStream.Length)
+        $Content = [System.Text.Encoding]::ASCII.GetString($bytes)
+        $binaryReader.Close()
+        $binaryReader.Dispose()
+
         [string[]]$StringsOnly = GetStrings -Path $Content -MinimumLength $MinLength
         if (-not ([string]::IsNullOrWhiteSpace($StringsOnly))) {
           [string[]]$Words = if (-not ([string]::IsNullOrWhiteSpace($StringsOnly))) {
@@ -60,10 +72,32 @@ function Import-Content {
 
         }
         [string]$hashString = ($UniqueWordList | Out-String).Trim()
-        $hashString | Out-File -FilePath $FinalFilePath -Encoding Ascii -Force
+        $Tempbigfile = $hashString | Out-File -FilePath $ENV:USERPROFILE\Desktop\tempfile.txt -Encoding Ascii -Force -Append
       }
       Write-Output "Done $File"
     }
+    $binaryReader = New-Object System.IO.BinaryReader([System.IO.File]::Open($Tempbigfile, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::Read))
+    $binaryReader.BaseStream.Position = 0
+    $binaryReader.BaseStream.Seek(0, [System.IO.SeekOrigin]::Begin)
+    $bytes = $binaryReader.ReadBytes($binaryReader.BaseStream.Length)
+    $Content = [System.Text.Encoding]::ASCII.GetString($bytes)
+    $binaryReader.Close()
+    $binaryReader.Dispose()
+
+    [string[]]$StringsOnly = GetStrings -Path $Content -MinimumLength $MinLength
+    if (-not ([string]::IsNullOrWhiteSpace($StringsOnly))) {
+      [string[]]$Words = if (-not ([string]::IsNullOrWhiteSpace($StringsOnly))) {
+        $StringsOnly.Split()
+      }
+      if (-Not ([string]::IsNullOrWhiteSpace($Words))) {
+        $UniqueWordList = [System.Collections.Generic.HashSet[string]]::new([string[]]($Words), [System.StringComparer]::OrdinalIgnoreCase)
+      }
+
+
+    }
+    [string]$hashString = ($UniqueWordList | Out-String).Trim()
+    $hashString | Out-File -FilePath $FinalFilePath -Encoding Ascii -Force
+    Write-Output "Finished all files the completed file is located at $FinalFilePath"
   }
 }
 
