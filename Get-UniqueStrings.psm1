@@ -34,22 +34,60 @@ function Import-Content {
     [ValidateNotNullOrEmpty()]
     [string[]]
     $Path,
-    [switch]
-    $Raw
+
+    [Parameter(
+      Mandatory = $false,
+      ValueFromPipeline = $true,
+      Position = 1
+    )]
+    [string]
+    $FinalFilePath
   )
   process {
     $Files = Get-ChildItem -LiteralPath $Path -Recurse -Force -File
     foreach ($file in (Resolve-Path -LiteralPath $Files)) {
       if (Test-Path -LiteralPath $file -PathType Leaf) {
-        if ($Raw) {
-          [System.IO.File]::ReadAllText($file) | Write-Output -NoEnumerate
-
-        } else {
-          [System.IO.File]::ReadAllLines($file) | Write-Output -NoEnumerate
+        # fastest way to read a file (including a binary file) into memory
+        [string[]]$Content = [System.IO.File]::ReadAllBytes($file) | ForEach-Object { [char]$_ }
+        [string[]]$StringsOnly = GetStrings -Path $Content -MinimumLength $MinLength
+        if (-not ([string]::IsNullOrWhiteSpace($StringsOnly))) {
+          [string[]]$Words = if (-not ([string]::IsNullOrWhiteSpace($StringsOnly))) {
+            $StringsOnly.Split()
+          }
+          if (-Not ([string]::IsNullOrWhiteSpace($Words))) {
+            $UniqueWordList = [System.Collections.Generic.HashSet[string]]::new([string[]]($Words), [System.StringComparer]::OrdinalIgnoreCase)
+          }
 
         }
+        [string]$hashString = ($UniqueWordList | Out-String).Trim()
+        $hashString | Out-File -FilePath $FinalFilePath -Encoding Ascii -Force
       }
+      Write-Output "Done $File"
     }
+  }
+}
+
+
+function Get-UniqueStrings {
+  [CmdletBinding()]
+  param(
+    # Directory to process
+    [Parameter(Mandatory = $false)]
+    [string]
+    $Path = $(Get-Location).Path,
+    # Minimum length of strings to work with
+    [Parameter(Mandatory = $false)]
+    [int16]
+    $MinLength = 5,
+    # Destination File
+    [Parameter(Mandatory = $false)]
+    [string]
+    $FinalFile = "$ENV:USERPROFILE\Desktop\Unique.txt"
+  )
+  $Directory = $Path
+  if (-Not ([string]::IsNullOrWhiteSpace($Directory))) {
+    Import-Content -Path $Directory -Verbose -FinalFilePath $FinalFile
+
   }
 }
 
