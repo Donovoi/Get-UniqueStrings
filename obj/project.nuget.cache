@@ -1,10 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "cz4ZH0+HB1tU1lDe84T4t7w/Kn+V6SbA2lYweRjivMyLlvYf2tpke5NIdYKVgAvhJ/y4I/IfGqDVUjmyMUpf5A==",
+  "dgSpecHash": "cW/nqs7LQf9vXLXxW/9aXRV7lhnbtXcClJJ5H/L3Q1RZ/bTxSceZ4nml4168//Ut+alZOhZsLRoGqff1ksiydg==",
   "success": true,
-  "projectFilePath": "C:\\Users\\Administrator\\Get-UniqueStrings\\Get-UniqueStrings.csproj",
+  "projectFilePath": "C:\\Users\\micha\\source\\repos\\Donovoi\\Get-UniqueStrings\\Get-UniqueStrings.csproj",
   "expectedPackageFiles": [
-    "C:\\Users\\Administrator\\.nuget\\packages\\microsoft.windows.sdk.net.ref\\10.0.22621.27\\microsoft.windows.sdk.net.ref.10.0.22621.27.nupkg.sha512"
+    "C:\\Users\\micha\\.nuget\\packages\\microsoft.windows.sdk.net.ref\\10.0.22621.27\\microsoft.windows.sdk.net.ref.10.0.22621.27.nupkg.sha512"
   ],
   "logs": []
 }
