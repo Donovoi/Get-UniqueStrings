@@ -17,12 +17,12 @@ function GetStrings {
 
   process {
     [string]$AsciiFileContents = $Path
-    #$AsciiRegex = [regex]"[\x20-\x7E]{$MinimumLength,}"
+    $AsciiRegex = [regex]"[\x20-\x7E]{$MinimumLength,}"
     # Only match valid UTF8 characters
-    $AsciiRegex = [regex]"[\x00-\x7F]{$MinimumLength,}"
+    #$AsciiRegex = [regex]"[\x00-\x7F]{$MinimumLength,}"
     $Results = $AsciiRegex.Matches($AsciiFileContents)
     # Remove all question marks from a line that has two or more consecutive question marks
-    $Results = $Results | ForEach-Object { $_.Value -replace '\?{2,}', '' }
+    # $Results = $Results | ForEach-Object { $_.Value -replace '\?{2,}', '' }
     $Results
   }
 }
@@ -53,26 +53,49 @@ function Import-Content {
     $Files = Get-ChildItem -LiteralPath $Path -Recurse -Force -File -ErrorAction SilentlyContinue
     foreach ($file in (Resolve-Path -LiteralPath $Files)) {
       if (Test-Path -LiteralPath $file -PathType Leaf) {
-        $binaryReader = New-Object System.IO.BinaryReader([System.IO.File]::Open($file, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::Read))
-        $binaryReader.BaseStream.Position = 0
-        $binaryReader.BaseStream.Seek(0, [System.IO.SeekOrigin]::Begin)
-        $bytes = $binaryReader.ReadBytes($binaryReader.BaseStream.Length)
-        $Content = [System.Text.Encoding]::ASCII.GetString($bytes)
-        $binaryReader.Close()
-        $binaryReader.Dispose()
-
-        [string[]]$StringsOnly = GetStrings -Path $Content -MinimumLength $MinLength
-        if (-not ([string]::IsNullOrWhiteSpace($StringsOnly))) {
-          [string[]]$Words = if (-not ([string]::IsNullOrWhiteSpace($StringsOnly))) {
-            $StringsOnly.Split()
+        $fs = New-Object FileStream($file, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::Read, 8192, [System.IO.FileOptions]::SequentialScan)
+        $binaryReader = New-Object System.IO.BinaryReader($fs)
+        [byte[]]$buffer = [byte]::new(8192)
+        $bufferoffset = 0
+        $byteslefttoread = [int]$binaryReader.ReadInt64()
+        $byteslefttorecieve = $fs.Length
+        [System.Collections.Generic.List[int]]$bytes = New-Object System.Collections.Generic.List[long]
+        while ($true) {
+          $bytestoread = [Math]::Min($byteslefttoread, $buffer.Length - $bufferoffset)
+          if ($byteslefttoread -eq 0) {
+            break;
           }
-          if (-Not ([string]::IsNullOrWhiteSpace($Words))) {
-            $UniqueWordList = [System.Collections.Generic.HashSet[string]]::new([string[]]($Words), [System.StringComparer]::OrdinalIgnoreCase)
+          $bytesread = $binaryReader.Read($buffer, $bufferoffset, $bytestoread)
+          if ($bytesread -eq 0) {
+            break;
+          }
+          $byteslefttorecieve -= $bytesread
+          $bytesread += $bufferoffset
+          $wordstoadd = $bytesread % [System]::SizeOf([int64])
+          for ($i = 0; $i -lt $wordstoadd.ToInt64(); $i++) {
+            $bytes = $binaryReader.ReadBytes($i.ToByte())
+            $Content = [System.Text.Encoding]::ASCII.GetString($bytes)
+            $binaryReader.Close()
+            $binaryReader.Dispose()
+
+            [string[]]$StringsOnly = GetStrings -Path $Content -MinimumLength $MinLength
+            if (-not ([string]::IsNullOrWhiteSpace($StringsOnly))) {
+              [string[]]$Words = if (-not ([string]::IsNullOrWhiteSpace($StringsOnly))) {
+                $StringsOnly.Split()
+              }
+              if (-Not ([string]::IsNullOrWhiteSpace($Words))) {
+                $UniqueWordList = [System.Collections.Generic.HashSet[string]]::new([string[]]($Words), [System.StringComparer]::OrdinalIgnoreCase)
+              }
+
+            }
           }
 
+          $binaryReader.BaseStream.Seek(0, [System.IO.SeekOrigin]::Begin)
+
+          [string]$hashString = ($UniqueWordList | Out-String).Trim()
+          $Tempbigfile = $hashString | Out-File -FilePath $ENV:USERPROFILE\Desktop\tempfile.txt -Encoding Ascii -Force -Appen
         }
-        [string]$hashString = ($UniqueWordList | Out-String).Trim()
-        $Tempbigfile = $hashString | Out-File -FilePath $ENV:USERPROFILE\Desktop\tempfile.txt -Encoding Ascii -Force -Append
+
       }
       Write-Output "Done $File"
     }
