@@ -1,2 +1,9 @@
 strings.txt
 temp.txt
+
+# Keep local and sensitive material outside version control.
+.vs/
+bin/
+obj/
+*.user
+*.suo
